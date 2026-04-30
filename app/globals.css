@@ -1,0 +1,224 @@
+/**
+ * =============================================================
+ * ESCALA ADN — Sistema de Diseño Global
+ * Paleta corporativa, tokens semánticos y estilos base.
+ * Versión: 1.0.0
+ * =============================================================
+ */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* -------------------------------------------------------
+   * PALETA CORPORATIVA ESCALA ADN
+   * Estas variables son la identidad visual de la marca.
+   * ------------------------------------------------------- */
+
+  /** Color primario: Verde Azulado institucional */
+  --cp:  #007A88;
+  /** Color primario claro: hover y acentos */
+  --cpl: #009BAD;
+  /** Color secundario: Terracota para alertas y énfasis */
+  --cs:  #BA5628;
+  /** Color secundario claro */
+  --csl: #D4693A;
+  /** Color oscuro: Azul noche, fondos de navegación */
+  --cd:  #042842;
+  /** Color oscuro profundo: fondos de login y sidebar */
+  --cd2: #031e34;
+  /** Color claro: Crema cálida, fondos de tarjetas */
+  --cl:  #F1ECE6;
+  /** Color claro medio: bordes y fondos sutiles */
+  --clm: #e8e0d8;
+
+  /* -------------------------------------------------------
+   * TOKENS SEMÁNTICOS — Mapeados a la paleta corporativa
+   * ------------------------------------------------------- */
+  --background:             #F7F3EF;
+  --foreground:             #042842;
+  --card:                   #ffffff;
+  --card-foreground:        #042842;
+  --popover:                #ffffff;
+  --popover-foreground:     #042842;
+  --primary:                #007A88;
+  --primary-foreground:     #F1ECE6;
+  --secondary:              #e8e0d8;
+  --secondary-foreground:   #042842;
+  --muted:                  #e8e0d8;
+  --muted-foreground:       #5a6a78;
+  --accent:                 #009BAD;
+  --accent-foreground:      #F1ECE6;
+  --destructive:            #BA5628;
+  --destructive-foreground: #F1ECE6;
+  --border:                 #d6cec6;
+  --input:                  #d6cec6;
+  --ring:                   #007A88;
+  --radius:                 0.5rem;
+
+  /* Gráficas */
+  --chart-1: #007A88;
+  --chart-2: #BA5628;
+  --chart-3: #042842;
+  --chart-4: #009BAD;
+  --chart-5: #D4693A;
+
+  /* Barra lateral — siempre en modo oscuro */
+  --sidebar:                    #042842;
+  --sidebar-foreground:         #F1ECE6;
+  --sidebar-primary:            #009BAD;
+  --sidebar-primary-foreground: #F1ECE6;
+  --sidebar-accent:             #031e34;
+  --sidebar-accent-foreground:  #e8e0d8;
+  --sidebar-border:             rgba(241, 236, 230, 0.08);
+  --sidebar-ring:               #007A88;
+}
+
+@theme inline {
+  /* Tipografía corporativa */
+  --font-sans: 'Inter', 'Inter Fallback', sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
+
+  /* Colores del sistema */
+  --color-background:             var(--background);
+  --color-foreground:             var(--foreground);
+  --color-card:                   var(--card);
+  --color-card-foreground:        var(--card-foreground);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-secondary:              var(--secondary);
+  --color-secondary-foreground:   var(--secondary-foreground);
+  --color-muted:                  var(--muted);
+  --color-muted-foreground:       var(--muted-foreground);
+  --color-accent:                 var(--accent);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-destructive:            var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:                 var(--border);
+  --color-input:                  var(--input);
+  --color-ring:                   var(--ring);
+  --color-chart-1:                var(--chart-1);
+  --color-chart-2:                var(--chart-2);
+  --color-chart-3:                var(--chart-3);
+  --color-chart-4:                var(--chart-4);
+  --color-chart-5:                var(--chart-5);
+
+  /* Colores de marca disponibles como clases Tailwind:
+     bg-cp, text-cp, bg-cs, text-cs, etc. */
+  --color-cp:  #007A88;
+  --color-cpl: #009BAD;
+  --color-cs:  #BA5628;
+  --color-csl: #D4693A;
+  --color-cd:  #042842;
+  --color-cd2: #031e34;
+  --color-cl:  #F1ECE6;
+  --color-clm: #e8e0d8;
+
+  /* Radio de borde */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Sidebar */
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* =============================================================
+ * ANIMACIONES Y TRANSICIONES CORPORATIVAS
+ * ============================================================= */
+
+/** Entrada suave para modales, tarjetas y paneles */
+@keyframes aparecerSuave {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/** Deslizamiento lateral para el sidebar en móvil */
+@keyframes deslizarDesdeIzquierda {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0);     }
+}
+
+.animar-entrada {
+  animation: aparecerSuave 0.25s ease-out forwards;
+}
+
+.animar-lateral {
+  animation: deslizarDesdeIzquierda 0.3s ease-out forwards;
+}
+
+/* =============================================================
+ * SCROLLBAR PERSONALIZADO — Identidad visual en navegadores
+ * Webkit (Chrome, Edge, Safari)
+ * ============================================================= */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--clm); }
+::-webkit-scrollbar-thumb { background: var(--cp); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cpl); }
+
+/* =============================================================
+ * UTILIDADES GLOBALES
+ * ============================================================= */
+
+/** Contenedor de texto con corte de línea para celdas de tabla */
+.texto-truncado {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/** Foco accesible con color de marca */
+.foco-marca:focus-visible {
+  outline: 2px solid var(--cp);
+  outline-offset: 2px;
+}
+
+/** Separador decorativo con color de marca */
+.separador-marca {
+  border-top: 2px solid var(--cp);
+}
+
+/** Badge de estado genérico */
+.insignia-estado {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.insignia-pendiente  { background: #fef3c7; color: #92400e; }
+.insignia-autorizado { background: #d1fae5; color: #065f46; }
+.insignia-rechazado  { background: #fee2e2; color: #991b1b; }
+.insignia-revision   { background: #e0f2fe; color: #075985; }
+
+/** Fondo de lienzo para canvas de firma */
+canvas.lienzo-firma {
+  cursor: crosshair;
+  touch-action: none;
+  border: 1.5px dashed var(--clm);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
