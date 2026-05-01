@@ -13,12 +13,12 @@ export async function GET(
     return new NextResponse('ID inválido', { status: 400 });
   }
 
-  // 2. Obtener de la BD (Asegúrate que el campo es contenido_base64)
+  // 2. Obtener de la BD
   const rows = await query<{
-    nombre_archivo:   string;
-    tipo_documento:   string;
+    nombre_archivo: string;
+    tipo_documento: string;
     contenido_base64: string;
-    mime_type:        string;
+    mime_type: string;
   }>(
     `SELECT nombre_archivo, tipo_documento, contenido_base64, mime_type
      FROM documentos_personal
@@ -33,7 +33,7 @@ export async function GET(
     return new NextResponse('Documento no encontrado', { status: 404 });
   }
 
-  // 3. Limpiar el Base64
+  // 3. Limpiar base64
   let base64Puro = doc.contenido_base64;
   if (base64Puro.startsWith('data:')) {
     const indiceComa = base64Puro.indexOf(',');
@@ -44,7 +44,7 @@ export async function GET(
 
   const base64Limpio = base64Puro.replace(/[\r\n\s]/g, '');
 
-  // 4. Decodificar base64
+  // 4. Decodificar
   let buffer: Buffer;
   try {
     buffer = Buffer.from(base64Limpio, 'base64');
@@ -58,28 +58,25 @@ export async function GET(
 
   const cuerpoArchivo = new Uint8Array(buffer);
 
-  // 5. Determinar tipo real del contenido
+  // 5. Detectar tipo real
   const esPDFReal = buffer.byteLength >= 4
-    && buffer[0] === 0x25 // %
-    && buffer[1] === 0x50 // P
-    && buffer[2] === 0x44 // D
-    && buffer[3] === 0x46; // F
-
-  const esHTML = /^\s*</.test(buffer.toString('utf8', 0, Math.min(buffer.length, 64)));
+    && buffer[0] === 0x25
+    && buffer[1] === 0x50
+    && buffer[2] === 0x44
+    && buffer[3] === 0x46;
 
   let mimeFinal = doc.mime_type || 'application/octet-stream';
-
   if (doc.tipo_documento === 'cuenta_cobro_pdf') {
-    if (esPDFReal) mimeFinal = 'application/pdf';
-    else if (esHTML) mimeFinal = 'text/html; charset=utf-8';
+    // Requerimiento funcional: siempre descargar cuenta de cobro como PDF
+    mimeFinal = 'application/pdf';
   }
 
-  const extensionPorMime = mimeFinal.includes('pdf') ? '.pdf' : mimeFinal.includes('html') ? '.html' : '';
-  const nombreDescarga = /\.(pdf|html?)$/i.test(doc.nombre_archivo)
-    ? doc.nombre_archivo
-    : `${doc.nombre_archivo}${extensionPorMime}`;
+  const nombreBase = doc.nombre_archivo.replace(/\.(pdf|html?)$/i, '');
+  const nombreDescarga = doc.tipo_documento === 'cuenta_cobro_pdf'
+    ? `${nombreBase}.pdf`
+    : (/\.(pdf|html?)$/i.test(doc.nombre_archivo) ? doc.nombre_archivo : `${doc.nombre_archivo}.pdf`);
 
-  // 6. Respuesta final
+  // 6. Respuesta
   return new NextResponse(cuerpoArchivo, {
     status: 200,
     headers: {
