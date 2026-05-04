@@ -43,6 +43,24 @@ CREATE TABLE IF NOT EXISTS auditoria_acciones (
     creado_en       TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
+-- Si la tabla ya existía de una versión previa, completar columnas faltantes.
+ALTER TABLE auditoria_acciones
+  ADD COLUMN IF NOT EXISTS usuario_id     UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS nombre_usuario VARCHAR(150),
+  ADD COLUMN IF NOT EXISTS rol_usuario    VARCHAR(30),
+  ADD COLUMN IF NOT EXISTS modulo         VARCHAR(60),
+  ADD COLUMN IF NOT EXISTS accion         VARCHAR(80),
+  ADD COLUMN IF NOT EXISTS descripcion    TEXT,
+  ADD COLUMN IF NOT EXISTS referencia_id  UUID,
+  ADD COLUMN IF NOT EXISTS ip_origen      INET,
+  ADD COLUMN IF NOT EXISTS user_agent     TEXT,
+  ADD COLUMN IF NOT EXISTS creado_en      TIMESTAMPTZ;
+
+ALTER TABLE auditoria_acciones
+  ALTER COLUMN modulo SET NOT NULL,
+  ALTER COLUMN accion SET NOT NULL,
+  ALTER COLUMN creado_en SET DEFAULT NOW();
+
 COMMENT ON TABLE  auditoria_acciones IS 'Log inmutable de acciones del sistema. Solo lectura para CEO/TI.';
 COMMENT ON COLUMN auditoria_acciones.nombre_usuario IS 'Snapshot del nombre al momento de la acción — persiste aunque se elimine el usuario.';
 

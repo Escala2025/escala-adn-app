@@ -11,13 +11,6 @@
 --    nextval() es atómico en PostgreSQL — seguro incluso con múltiples
 --    conexiones simultáneas.
 -- -----------------------------------------------------------------------------
-CREATE SEQUENCE seq_numero_cuenta
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-    
 CREATE SEQUENCE IF NOT EXISTS seq_numero_cuenta
   START WITH 1
   INCREMENT BY 1
@@ -27,14 +20,24 @@ CREATE SEQUENCE IF NOT EXISTS seq_numero_cuenta
 
 -- Si ya hay cuentas en la tabla, posicionar la secuencia en el siguiente
 -- número disponible para no generar colisiones con registros históricos.
-SELECT setval(
-  'seq_numero_cuenta',
-  GREATEST(
-    (SELECT COALESCE(MAX(CAST(numero_cuenta AS INTEGER)), 0) FROM cuentas_cobro
-     WHERE numero_cuenta ~ '^[0-9]+$'),   -- solo filas con valor numérico puro
-    0
-  )
-);
+DO $$
+DECLARE
+  v_max_numero BIGINT;
+BEGIN
+  SELECT COALESCE(MAX(CAST(numero_cuenta AS BIGINT)), 0)
+    INTO v_max_numero
+  FROM cuentas_cobro
+  WHERE numero_cuenta ~ '^[0-9]+$';
+
+  -- Si no hay datos numéricos aún, dejar secuencia en 1 y no "consumida"
+  -- para que el primer nextval sea 1. Si sí hay datos, posicionar en el máximo.
+  IF v_max_numero <= 0 THEN
+    PERFORM setval('seq_numero_cuenta', 1, false);
+  ELSE
+    PERFORM setval('seq_numero_cuenta', v_max_numero, true);
+  END IF;
+END;
+$$;
 
 -- -----------------------------------------------------------------------------
 -- 2. CAMBIAR EL TIPO DE LA COLUMNA numero_cuenta
