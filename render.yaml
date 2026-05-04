@@ -1,0 +1,28 @@
+# Render Infrastructure as Code for Escala ADN App
+# Reference: https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: escala-adn-app
+    runtime: docker
+    plan: standard
+    region: oregon # Cambia a tu región preferida: oregon, ohio, frankfurt, singapore, sydney
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        scope: all
+        # Esta variable debe ser configurada en el dashboard de Render
+        # No la hardcodees en el código
+    healthCheckPath: /
+
+databases:
+  - name: escala-adn-db
+    plan: standard
+    region: oregon
+    version: 18
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: Allow all
