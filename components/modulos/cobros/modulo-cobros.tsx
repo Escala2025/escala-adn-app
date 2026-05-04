@@ -658,7 +658,7 @@ const manejarEnvio = async () => {
 
           <ZonaCarga
             label="Planilla de Seguridad Social"
-            descripcion="Planilla del mes vigente — PDF o imagen"
+            descripcion="Planilla del mes vigente — PDF"
             archivo={archivos.seguridadSocial}
             onSeleccionar={f => setArchivos(p => ({ ...p, seguridadSocial: f }))}
             obligatorio
@@ -667,7 +667,7 @@ const manejarEnvio = async () => {
 
           <ZonaCarga
             label="Certificado de Cuenta"
-            descripcion="Carta bancaria o certificado de cuenta vigente — PDF o imagen"
+            descripcion="Carta bancaria o certificado de cuenta vigente — PDF"
             archivo={archivos.certificadoBancario}
             onSeleccionar={f => setArchivos(p => ({ ...p, certificadoBancario: f }))}
             obligatorio
@@ -759,7 +759,7 @@ function ModalAccionContable({ cuenta, accion, onConfirmar, onCerrar }: ModalAcc
                 </p>
                 <ZonaCarga
                   label="Comprobante de Pago"
-                  descripcion="PDF o imagen del comprobante bancario"
+                  descripcion="PDF del comprobante bancario"
                   archivo={comprobante}
                   onSeleccionar={setComprobante}
                   obligatorio
