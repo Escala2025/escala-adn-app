@@ -11,6 +11,15 @@ import type { CuentaCobro, EstadoCuentaCobro, TipoCuentaBancaria } from '@/lib/t
 import { crearNotificacion } from '@/lib/actions/notificaciones-actions';
 import jsPDF from 'jspdf';
 
+const CENTROS_COSTOS_PERMITIDOS = [
+  'Comfandi',
+  'Escala Base',
+  'Escala General',
+  'Alianza Fortalecimiento emprendedores',
+  'Caribe Exponencial',
+  'Ruta emprendimiento 2026',
+] as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS: DOCUMENTOS PERSONAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -340,7 +349,7 @@ export async function obtenerCuentasDeUsuario(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface DatosCrearCuentaCobro {
-  numeroCuenta:          string;
+  numeroCuenta?:         string;
   usuarioId:             string;
   nombreSolicitante:     string;
   cedulaSolicitante:     string;
@@ -363,6 +372,11 @@ export interface DatosCrearCuentaCobro {
 export async function crearCuentaCobro(
   datos: DatosCrearCuentaCobro,
 ): Promise<ResultadoConDatos<CuentaCobro>> {
+  const centroCostosNormalizado = (datos.centroCostos ?? '').trim();
+  if (!CENTROS_COSTOS_PERMITIDOS.includes(centroCostosNormalizado as (typeof CENTROS_COSTOS_PERMITIDOS)[number])) {
+    return { ok: false, error: 'Centro de costos inválido. Debe seleccionar una opción permitida.' };
+  }
+
   const esUUID = UUID_REGEX.test(datos.usuarioId);
   if (!esUUID) {
     return { ok: false, error: 'Sesión inválida.' };
@@ -400,7 +414,7 @@ export async function crearCuentaCobro(
       [
         numeroCuentaFinal, datos.usuarioId, datos.nombreSolicitante,
         datos.cedulaSolicitante, datos.valorNumerico, datos.valorLetras,
-        datos.concepto, datos.centroCostos,
+        datos.concepto, centroCostosNormalizado,
         datos.declaranteRenta, datos.tomaCostosDeducciones,
         datos.banco, datos.tipoCuenta, datos.numeroCuentaBancaria, datos.titular,
         datos.firmaSvg ?? null, datos.fechaDocumento,
@@ -417,7 +431,7 @@ export async function crearCuentaCobro(
       valorNumerico:          datos.valorNumerico,
       valorLetras:            datos.valorLetras,
       concepto:               datos.concepto,
-      centroCostos:           datos.centroCostos,
+      centroCostos:           centroCostosNormalizado,
       declaranteRenta:        datos.declaranteRenta,
       tomaCostosDeducciones:  datos.tomaCostosDeducciones,
       datosBancarios: {
@@ -499,7 +513,7 @@ export async function crearCuentaCobro(
       valorNumerico:         datos.valorNumerico,
       valorLetras:           datos.valorLetras,
       concepto:              datos.concepto,
-      centroCostos:          datos.centroCostos,
+      centroCostos:          centroCostosNormalizado,
       banco:                 datos.banco,
       tipoCuenta:            datos.tipoCuenta,
       numeroCuentaBancaria: datos.numeroCuentaBancaria,

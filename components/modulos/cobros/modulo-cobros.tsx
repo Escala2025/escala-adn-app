@@ -22,6 +22,15 @@ import { DollarSign } from 'lucide-react';
 import { esContador, formatearMoneda, formatearFechaCorta, numeroALetras, claseEstadoCuenta } from '@/lib/utilidades';
 import type { CuentaCobro, TipoCuentaBancaria, EstadoCuentaCobro } from '@/lib/tipos';
 
+const CENTROS_COSTOS_PERMITIDOS = [
+  'Comfandi',
+  'Escala Base',
+  'Escala General',
+  'Alianza Fortalecimiento emprendedores',
+  'Caribe Exponencial',
+  'Ruta emprendimiento 2026',
+] as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CANVAS DE FIRMA DIGITAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -493,13 +502,17 @@ const manejarEnvio = async () => {
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--cd)' }}>Centro de Costos *</label>
-              <input
+              <select
                 value={form.centroCostos}
                 onChange={e => actualizar('centroCostos', e.target.value)}
-                placeholder="Marketing y Comunicaciones"
                 className="w-full px-3 py-2.5 rounded-lg text-sm border"
-                style={{ borderColor: errores.centroCostos ? 'var(--cs)' : 'var(--border)', color: 'var(--cd)', outline: 'none', backgroundColor: 'white' }}
-              />
+                style={{ borderColor: errores.centroCostos ? 'var(--cs)' : 'var(--border)', color: form.centroCostos ? 'var(--cd)' : 'var(--muted-foreground)', outline: 'none', backgroundColor: 'white' }}
+              >
+                <option value="">Seleccione un centro de costos</option>
+                {CENTROS_COSTOS_PERMITIDOS.map((centro) => (
+                  <option key={centro} value={centro}>{centro}</option>
+                ))}
+              </select>
               {errores.centroCostos && <p className="text-xs mt-1" style={{ color: 'var(--cs)' }}>{errores.centroCostos}</p>}
             </div>
           </div>
@@ -719,7 +732,7 @@ function ModalAccionContable({ cuenta, accion, onConfirmar, onCerrar }: ModalAcc
   const inputRef = useRef<HTMLInputElement>(null);
 
   const esContableRole = usuario?.rol === 'Contable';
-  const tituloAutorizar = esContableRole ? 'Enviar a Revisión CEO' : 'Autorizar Pago';
+  const tituloAutorizar = 'Autorizar Pago';
 
   return (
     <div className="modal-fondo" onClick={e => e.target === e.currentTarget && onCerrar()}>
@@ -746,26 +759,18 @@ function ModalAccionContable({ cuenta, accion, onConfirmar, onCerrar }: ModalAcc
 
         {accion === 'autorizar' ? (
           <div className="space-y-3">
-            {esContableRole ? (
-              <div className="rounded-xl p-3" style={{ backgroundColor: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.2)' }}>
-                <p className="text-sm" style={{ color: '#0369a1' }}>
-                  Esta cuenta quedará en estado <strong>En revisión</strong> y el CEO recibirá una notificación para aprobar o rechazar.
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm" style={{ color: 'var(--cd)' }}>
-                  Cargue el comprobante de pago para confirmar la autorización:
-                </p>
-                <ZonaCarga
-                  label="Comprobante de Pago"
-                  descripcion="PDF del comprobante bancario"
-                  archivo={comprobante}
-                  onSeleccionar={setComprobante}
-                  obligatorio
-                />
-              </>
-            )}
+            <>
+              <p className="text-sm" style={{ color: 'var(--cd)' }}>
+                Cargue el comprobante de pago para confirmar la autorización:
+              </p>
+              <ZonaCarga
+                label="Comprobante de Pago"
+                descripcion="PDF del comprobante bancario"
+                archivo={comprobante}
+                onSeleccionar={setComprobante}
+                obligatorio
+              />
+            </>
           </div>
         ) : (
           <div>
@@ -792,7 +797,7 @@ function ModalAccionContable({ cuenta, accion, onConfirmar, onCerrar }: ModalAcc
           <button
             type="button"
             onClick={() => onConfirmar(cuenta.id, accion, motivo || undefined, comprobante || undefined)}
-            disabled={accion === 'rechazar' && !motivo.trim()}
+            disabled={(accion === 'rechazar' && !motivo.trim()) || (accion === 'autorizar' && !comprobante)}
             className="flex-1 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
             style={{
               backgroundColor: accion === 'autorizar' ? 'var(--cp)' : 'var(--cs)',
@@ -800,7 +805,7 @@ function ModalAccionContable({ cuenta, accion, onConfirmar, onCerrar }: ModalAcc
             }}
           >
             {accion === 'autorizar'
-              ? <><CheckCircle size={14} /> {esContableRole ? 'Enviar a revisión' : 'Autorizar'}</>
+              ? <><CheckCircle size={14} /> Autorizar</>
               : <><XCircle size={14} /> Rechazar</>}
           </button>
         </div>
@@ -868,7 +873,6 @@ export default function ModuloCobros() {
       // ─── BUSCA ESTA PARTE EN TU CÓDIGO Y AÑADE LA LÍNEA RESALTADA ───
 
 const res = await crearCuentaCobro({
-  numeroCuenta: cc.numeroCuenta, // <--- AÑADE ESTA LÍNEA AQUÍ
   usuarioId: cc.usuarioId,
   nombreSolicitante: cc.nombreSolicitante,
   cedulaSolicitante: cc.cedulaSolicitante,
@@ -901,8 +905,7 @@ const res = await crearCuentaCobro({
 
   /** Autoriza o rechaza una cuenta en PostgreSQL.
    * Flujo en cadena:
-   *   - Contable: Pendiente → En revisión
-   *   - CEO / TI:  Pendiente | En revisión → Autorizado
+   *   - CEO / Contable: Pendiente | En revisión → Autorizado
    *   - Cualquiera con permiso: → Rechazado
    */
   const procesarAccion = useCallback(async (
@@ -917,11 +920,8 @@ const res = await crearCuentaCobro({
       let nuevoEstado: EstadoCuentaCobro;
       if (accion === 'rechazar') {
         nuevoEstado = 'Rechazado';
-      } else if (usuario.rol === 'Contable') {
-        // Contable solo puede pasar a "En revisión"
-        nuevoEstado = 'En revisión';
       } else {
-        // CEO / TI autorizan directamente
+        // CEO / Contable autorizan directamente
         nuevoEstado = 'Autorizado';
       }
       const res = await actualizarEstadoCuenta({
@@ -1136,15 +1136,8 @@ const res = await crearCuentaCobro({
     {/* ACCIONES DE PODER: Solo CEO y Contable */}
     {(usuario?.rol === 'CEO' || usuario?.rol === 'Contable') && (
       <>
-        {/* El Contable solo ve el botón si está Pendiente */}
-        {usuario.rol === 'Contable' && cc.estado === 'Pendiente' && (
-          <button onClick={() => setModalAccion({ cuenta: cc, accion: 'autorizar' })} className="p-1.5 rounded-lg" style={{ backgroundColor: 'rgba(14,165,233,0.1)', color: '#0284c7' }}>
-            <MessageSquare size={13} />
-          </button>
-        )}
-
-        {/* El CEO ve el botón en Pendiente o En Revisión */}
-        {usuario.rol === 'CEO' && (cc.estado === 'Pendiente' || cc.estado === 'En revisión') && (
+        {/* CEO y Contable pueden autorizar en Pendiente o En revisión */}
+        {(cc.estado === 'Pendiente' || cc.estado === 'En revisión') && (
           <button onClick={() => setModalAccion({ cuenta: cc, accion: 'autorizar' })} className="p-1.5 rounded-lg" style={{ backgroundColor: 'rgba(5,150,105,0.1)', color: '#059669' }}>
             <CheckCircle size={13} />
           </button>
