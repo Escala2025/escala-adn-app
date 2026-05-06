@@ -9,6 +9,16 @@ import { revalidatePath } from 'next/cache';
 import { query } from '@/lib/db';
 import type { CuentaCobro, EstadoCuentaCobro, TipoCuentaBancaria } from '@/lib/tipos';
 import { crearNotificacion } from '@/lib/actions/notificaciones-actions';
+import jsPDF from 'jspdf';
+
+const CENTROS_COSTOS_PERMITIDOS = [
+  'Comfandi',
+  'Escala Base',
+  'Escala General',
+  'Alianza Fortalecimiento emprendedores',
+  'Caribe Exponencial',
+  'Ruta emprendimiento 2026',
+] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS: DOCUMENTOS PERSONAL
@@ -36,29 +46,67 @@ interface _DatosPDF {
   declaranteRenta: boolean;
 }
 
+function _sanitizarTexto(valor: string | number | boolean | null | undefined): string {
+  return String(valor ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function _generarPDFBase64(d: _DatosPDF): string {
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cuenta de Cobro</title>
-<style>body{font-family:Arial,sans-serif;font-size:12px;color:#1a2e3b;padding:32px}
-h1{font-size:18px;color:#007a88;border-bottom:2px solid #007a88;padding-bottom:8px}
-table{width:100%;border-collapse:collapse;margin-top:16px}
-td{padding:6px 10px;border:1px solid #d0d9dd}
-.label{font-weight:bold;background:#f0f5f7;width:40%}
-.total{font-size:16px;font-weight:bold;color:#007a88}</style></head>
-<body><h1>CUENTA DE COBRO No. ${d.numeroCuenta}</h1><table>
-<tr><td class="label">Nombre</td><td>${d.nombreSolicitante}</td></tr>
-<tr><td class="label">Cedula</td><td>${d.cedulaSolicitante}</td></tr>
-<tr><td class="label">Fecha</td><td>${d.fechaDocumento}</td></tr>
-<tr><td class="label">Concepto</td><td>${d.concepto}</td></tr>
-<tr><td class="label">Centro de Costos</td><td>${d.centroCostos}</td></tr>
-<tr><td class="label">Valor</td><td class="total">$${Number(d.valorNumerico).toLocaleString('es-CO')}</td></tr>
-<tr><td class="label">Son</td><td>${d.valorLetras}</td></tr>
-<tr><td class="label">Banco</td><td>${d.banco}</td></tr>
-<tr><td class="label">Tipo Cuenta</td><td>${d.tipoCuenta}</td></tr>
-<tr><td class="label">No. Cuenta</td><td>${d.numeroCuentaBancaria}</td></tr>
-<tr><td class="label">Titular</td><td>${d.titular}</td></tr>
-<tr><td class="label">Declarante Renta</td><td>${d.declaranteRenta ? 'Si' : 'No'}</td></tr>
-</table></body></html>`;
-  return Buffer.from(html, 'utf-8').toString('base64');
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const margenX = 15;
+  let y = 20;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(4, 40, 66);
+  doc.text(`CUENTA DE COBRO No. ${_sanitizarTexto(d.numeroCuenta)}`, margenX, y);
+
+  y += 8;
+  doc.setDrawColor(0, 122, 136);
+  doc.setLineWidth(0.8);
+  doc.line(margenX, y, 195, y);
+
+  y += 8;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(33, 37, 41);
+
+  const filas: Array<[string, string]> = [
+    ['Nombre', _sanitizarTexto(d.nombreSolicitante)],
+    ['Cédula', _sanitizarTexto(d.cedulaSolicitante)],
+    ['Fecha', _sanitizarTexto(d.fechaDocumento)],
+    ['Concepto', _sanitizarTexto(d.concepto)],
+    ['Centro de Costos', _sanitizarTexto(d.centroCostos)],
+    ['Valor', `$${Number(d.valorNumerico).toLocaleString('es-CO')}`],
+    ['Son', _sanitizarTexto(d.valorLetras)],
+    ['Banco', _sanitizarTexto(d.banco)],
+    ['Tipo Cuenta', _sanitizarTexto(d.tipoCuenta)],
+    ['No. Cuenta', _sanitizarTexto(d.numeroCuentaBancaria)],
+    ['Titular', _sanitizarTexto(d.titular)],
+    ['Declarante de Renta', d.declaranteRenta ? 'Sí' : 'No'],
+  ];
+
+  filas.forEach(([label, value]) => {
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${label}:`, margenX, y);
+    doc.setFont('helvetica', 'normal');
+    const texto = doc.splitTextToSize(value, 130);
+    doc.text(texto, 62, y);
+    y += Math.max(7, texto.length * 5);
+  });
+
+  y += 6;
+  doc.setFontSize(9);
+  doc.setTextColor(108, 117, 125);
+  doc.text(`Generado por Escala ADN - ${new Date().toLocaleString('es-CO')}`, margenX, y);
+
+  const pdfArrayBuffer = doc.output('arraybuffer');
+  return Buffer.from(pdfArrayBuffer).toString('base64');
 }
 
 export interface DocumentoPersonal {
@@ -301,7 +349,7 @@ export async function obtenerCuentasDeUsuario(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface DatosCrearCuentaCobro {
-  numeroCuenta:          string;
+  numeroCuenta?:         string;
   usuarioId:             string;
   nombreSolicitante:     string;
   cedulaSolicitante:     string;
@@ -324,6 +372,11 @@ export interface DatosCrearCuentaCobro {
 export async function crearCuentaCobro(
   datos: DatosCrearCuentaCobro,
 ): Promise<ResultadoConDatos<CuentaCobro>> {
+  const centroCostosNormalizado = (datos.centroCostos ?? '').trim();
+  if (!CENTROS_COSTOS_PERMITIDOS.includes(centroCostosNormalizado as (typeof CENTROS_COSTOS_PERMITIDOS)[number])) {
+    return { ok: false, error: 'Centro de costos inválido. Debe seleccionar una opción permitida.' };
+  }
+
   const esUUID = UUID_REGEX.test(datos.usuarioId);
   if (!esUUID) {
     return { ok: false, error: 'Sesión inválida.' };
@@ -361,7 +414,7 @@ export async function crearCuentaCobro(
       [
         numeroCuentaFinal, datos.usuarioId, datos.nombreSolicitante,
         datos.cedulaSolicitante, datos.valorNumerico, datos.valorLetras,
-        datos.concepto, datos.centroCostos,
+        datos.concepto, centroCostosNormalizado,
         datos.declaranteRenta, datos.tomaCostosDeducciones,
         datos.banco, datos.tipoCuenta, datos.numeroCuentaBancaria, datos.titular,
         datos.firmaSvg ?? null, datos.fechaDocumento,
@@ -378,7 +431,7 @@ export async function crearCuentaCobro(
       valorNumerico:          datos.valorNumerico,
       valorLetras:            datos.valorLetras,
       concepto:               datos.concepto,
-      centroCostos:           datos.centroCostos,
+      centroCostos:           centroCostosNormalizado,
       declaranteRenta:        datos.declaranteRenta,
       tomaCostosDeducciones:  datos.tomaCostosDeducciones,
       datosBancarios: {
@@ -402,29 +455,55 @@ export async function crearCuentaCobro(
     const tareasDocumentos: Promise<unknown>[] = [];
 
     if (datos.urlSeguridadSocial) {
-      tareasDocumentos.push(
-        guardarDocumento({
-          usuarioId:       datos.usuarioId,
-          cuentaCobroId:   cuentaId,
-          nombreArchivo:   _generarNombreArchivo(nombreSol, 'seg_social', fechaHoy),
-          tipoDocumento:   'seg_social',
-          contenidoBase64: datos.urlSeguridadSocial,
-          mimeType:         'application/pdf',
-        }).catch(e => console.error('[Cobros] guardar seg_social:', e)),
-      );
+      const esDataPdf = datos.urlSeguridadSocial.startsWith('data:application/pdf;base64,');
+      const contenidoNormalizado = datos.urlSeguridadSocial.startsWith('data:')
+        ? datos.urlSeguridadSocial.slice(datos.urlSeguridadSocial.indexOf(',') + 1)
+        : datos.urlSeguridadSocial;
+
+      const base64Limpio = contenidoNormalizado.replace(/[\r\n\s]/g, '');
+      const bin = Buffer.from(base64Limpio, 'base64');
+      const esPdfReal = bin.length >= 4 && bin[0] === 0x25 && bin[1] === 0x50 && bin[2] === 0x44 && bin[3] === 0x46;
+
+      if (esDataPdf || esPdfReal) {
+        tareasDocumentos.push(
+          guardarDocumento({
+            usuarioId:       datos.usuarioId,
+            cuentaCobroId:   cuentaId,
+            nombreArchivo:   _generarNombreArchivo(nombreSol, 'seg_social', fechaHoy),
+            tipoDocumento:   'seg_social',
+            contenidoBase64: base64Limpio,
+            mimeType:         'application/pdf',
+          }).catch(e => console.error('[Cobros] guardar seg_social:', e)),
+        );
+      } else {
+        console.warn('[Cobros] seg_social omitido: contenido no PDF válido');
+      }
     }
 
     if (datos.urlCertificadoBancario) {
-      tareasDocumentos.push(
-        guardarDocumento({
-          usuarioId:       datos.usuarioId,
-          cuentaCobroId:   cuentaId,
-          nombreArchivo:   _generarNombreArchivo(nombreSol, 'cert_bancario', fechaHoy),
-          tipoDocumento:   'cert_bancario',
-          contenidoBase64: datos.urlCertificadoBancario,
-          mimeType:         'application/pdf',
-        }).catch(e => console.error('[Cobros] guardar cert_bancario:', e)),
-      );
+      const esDataPdf = datos.urlCertificadoBancario.startsWith('data:application/pdf;base64,');
+      const contenidoNormalizado = datos.urlCertificadoBancario.startsWith('data:')
+        ? datos.urlCertificadoBancario.slice(datos.urlCertificadoBancario.indexOf(',') + 1)
+        : datos.urlCertificadoBancario;
+
+      const base64Limpio = contenidoNormalizado.replace(/[\r\n\s]/g, '');
+      const bin = Buffer.from(base64Limpio, 'base64');
+      const esPdfReal = bin.length >= 4 && bin[0] === 0x25 && bin[1] === 0x50 && bin[2] === 0x44 && bin[3] === 0x46;
+
+      if (esDataPdf || esPdfReal) {
+        tareasDocumentos.push(
+          guardarDocumento({
+            usuarioId:       datos.usuarioId,
+            cuentaCobroId:   cuentaId,
+            nombreArchivo:   _generarNombreArchivo(nombreSol, 'cert_bancario', fechaHoy),
+            tipoDocumento:   'cert_bancario',
+            contenidoBase64: base64Limpio,
+            mimeType:         'application/pdf',
+          }).catch(e => console.error('[Cobros] guardar cert_bancario:', e)),
+        );
+      } else {
+        console.warn('[Cobros] cert_bancario omitido: contenido no PDF válido');
+      }
     }
 
     const pdfBase64 = _generarPDFBase64({
@@ -434,7 +513,7 @@ export async function crearCuentaCobro(
       valorNumerico:         datos.valorNumerico,
       valorLetras:           datos.valorLetras,
       concepto:              datos.concepto,
-      centroCostos:          datos.centroCostos,
+      centroCostos:          centroCostosNormalizado,
       banco:                 datos.banco,
       tipoCuenta:            datos.tipoCuenta,
       numeroCuentaBancaria: datos.numeroCuentaBancaria,
@@ -450,7 +529,7 @@ export async function crearCuentaCobro(
         nombreArchivo:   _generarNombreArchivo(nombreSol, 'cuenta_cobro_pdf', fechaHoy),
         tipoDocumento:   'cuenta_cobro_pdf',
         contenidoBase64: pdfBase64,
-        mimeType:         'text/html',
+        mimeType:         'application/pdf',
       }).catch(e => console.error('[Cobros] guardar cuenta_cobro_pdf:', e)),
     );
 

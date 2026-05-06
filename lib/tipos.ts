@@ -320,3 +320,48 @@ export const ETIQUETA_TIPO_DOCUMENTO: Record<TipoDocumentoPersonal, string> = {
   cert_bancario:    'Certificado Bancario',
   cuenta_cobro_pdf: 'Cuenta de Cobro (PDF)',
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCUMENTOS DE PROVEEDOR
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Tipos obligatorios de documentos PDF para proveedores. */
+export type TipoDocumentoProveedor =
+  | 'cedula_ciudadania'
+  | 'rut'
+  | 'hoja_vida_cv'
+  | 'antecedentes_policia_procuraduria'
+  | 'antecedentes_fiscales_contraloria'
+  | 'referencias_comerciales_personales';
+
+/** Etiquetas legibles de documentos obligatorios por proveedor. */
+export const ETIQUETA_TIPO_DOCUMENTO_PROVEEDOR: Record<TipoDocumentoProveedor, string> = {
+  cedula_ciudadania:                    'Cédula de Ciudadanía',
+  rut:                                  'RUT (Registro Único Tributario)',
+  hoja_vida_cv:                         'Hoja de Vida (CV)',
+  antecedentes_policia_procuraduria:    'Antecedentes de Policía y Procuraduría',
+  antecedentes_fiscales_contraloria:    'Certificado de Antecedentes Fiscales (Contraloría)',
+  referencias_comerciales_personales:   'Referencias Comerciales/Personales',
+};
+
+/** Orden canónico de documentos requeridos para proveedor. */
+export const TIPOS_DOCUMENTO_PROVEEDOR_REQUERIDOS: TipoDocumentoProveedor[] = [
+  'cedula_ciudadania',
+  'rut',
+  'hoja_vida_cv',
+  'antecedentes_policia_procuraduria',
+  'antecedentes_fiscales_contraloria',
+  'referencias_comerciales_personales',
+];
+
+/** Documento almacenado por proveedor. */
+export interface DocumentoProveedor {
+  id: string;
+  proveedorId: string;
+  tipoDocumento: TipoDocumentoProveedor;
+  nombreArchivo: string;
+  mimeType: string;
+  contenidoBase64?: string;
+  creadoEn?: string;
+  actualizadoEn?: string;
+}
